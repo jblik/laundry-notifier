@@ -14,9 +14,7 @@ type Config =
       DryerUri: string }
 
 [<CLIMutable>]
-type ProgramEnd =
-    { End: string
-      EndType: string }
+type ProgramEnd = { End: string; EndType: string }
 
 [<CLIMutable>]
 type DeviceStatus =
@@ -76,7 +74,7 @@ let monitor (config: Config) (name: string) (uri: string) =
                     printfn $"{name}: '{status.Program}' running, ends in {status.ProgramEnd.End}"
                     do! Task.Delay(parseRemaining status.ProgramEnd.End)
 
-                    let mutable program = status.Program
+                    let program = status.Program
                     let mutable ended = false
 
                     while not ended do
@@ -87,7 +85,6 @@ let monitor (config: Config) (name: string) (uri: string) =
                                 ended <- true
                                 do! sendDiscord config.DiscordWebhookUrl name program s.Status
                             else
-                                if s.Program <> "" then program <- s.Program
                                 do! Task.Delay(TimeSpan.FromMinutes 1.0)
                         with ex ->
                             eprintfn $"{name}: {ex.Message}"

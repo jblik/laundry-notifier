@@ -7,9 +7,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Discord\Discord.fs" />
         <Compile Include="Program.fs"/>
-        <Compile Include="VZug\GetDeviceInfo.fs" />
+        <Content Include="appsettings.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
 
 </Project>

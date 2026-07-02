@@ -46,9 +46,15 @@ let getStatus (baseUri: string) =
         return status
     }
 
-let sendDiscord (webhookUrl: string) (message: string) =
+let sendDiscord (webhookUrl: string) (name: string) (program: string) (status: string) =
     task {
-        let payload = JsonSerializer.Serialize {| content = message |}
+        let embed =
+            {| title = $"🧺 {name} finished"
+               description = $"**{program}** has ended\n{status}"
+               color = 5763719 // green
+               timestamp = DateTime.UtcNow.ToString "o" |}
+
+        let payload = JsonSerializer.Serialize {| embeds = [| embed |] |}
         use content = new StringContent(payload, Encoding.UTF8, "application/json")
         let! _ = http.PostAsync(webhookUrl, content)
         ()
@@ -81,7 +87,7 @@ let monitor (config: Config) (name: string) (uri: string) =
 
                             if s.ProgramEnd.End = "" then
                                 ended <- true
-                                do! sendDiscord config.DiscordWebhookUrl $"{name} {program} has ended\n {s.Status}"
+                                do! sendDiscord config.DiscordWebhookUrl name program s.Status
                             else
                                 if s.Program <> "" then program <- s.Program
                                 do! Task.Delay(TimeSpan.FromMinutes 1.0)

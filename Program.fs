@@ -1,11 +1,11 @@
 module laundry_notifier.Program
 
 open System
-open System.IO
 open System.Net.Http
 open System.Text
 open System.Text.Json
 open System.Threading.Tasks
+open Microsoft.Extensions.Configuration
 
 [<CLIMutable>]
 type Config =
@@ -29,15 +29,21 @@ type DeviceStatus =
       deviceUuid: string }
 
 let loadConfig () =
-    let path = Path.Combine(AppContext.BaseDirectory, "appsettings.json")
-    JsonSerializer.Deserialize<Config>(File.ReadAllText path)
+    ConfigurationBuilder()
+        .SetBasePath(AppContext.BaseDirectory)
+        .AddJsonFile("appsettings.json")
+        .AddEnvironmentVariables()
+        .Build()
+        .Get<Config>()
 
 let http = new HttpClient(Timeout = TimeSpan.FromSeconds 30.0)
 
 let getStatus (baseUri: string) =
     task {
         let! json = http.GetStringAsync($"{baseUri}/ai?command=getDeviceStatus")
-        return JsonSerializer.Deserialize<DeviceStatus>(json)
+        let status = JsonSerializer.Deserialize<DeviceStatus>(json)
+        printf $"{status}"
+        return status
     }
 
 let sendDiscord (webhookUrl: string) (message: string) =
@@ -59,6 +65,7 @@ let monitor (config: Config) (name: string) (uri: string) =
         while true do
             try
                 let! status = getStatus uri
+                do! sendDiscord config.DiscordWebhookUrl $"{name} {status.Program} has ended: {status}"
 
                 if status.Inactive = "true" then
                     do! Task.Delay(TimeSpan.FromMinutes 15.0)
@@ -68,7 +75,6 @@ let monitor (config: Config) (name: string) (uri: string) =
                     do! Task.Delay(parseRemaining status.ProgramEnd.End)
 
                     let mutable program = status.Program
-                    let mutable lastStatus = status.Status
                     let mutable ended = false
 
                     while not ended do
@@ -77,10 +83,9 @@ let monitor (config: Config) (name: string) (uri: string) =
 
                             if s.ProgramEnd.End = "" then
                                 ended <- true
-                                do! sendDiscord config.DiscordWebhookUrl $"{name} {program} has ended: {lastStatus}"
+                                do! sendDiscord config.DiscordWebhookUrl $"{name} {program} has ended: {s.Status}"
                             else
                                 if s.Program <> "" then program <- s.Program
-                                if s.Status <> "" then lastStatus <- s.Status
                                 do! Task.Delay(TimeSpan.FromMinutes 1.0)
                         with ex ->
                             // device can answer 503 while busy; keep polling
@@ -94,6 +99,7 @@ let monitor (config: Config) (name: string) (uri: string) =
 [<EntryPoint>]
 let main _ =
     let config = loadConfig ()
+    printf "%A" config.DiscordWebhookUrl
 
     [| monitor config "Washer" config.WasherUri
        monitor config "Dryer" config.DryerUri |]

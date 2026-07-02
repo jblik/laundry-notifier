@@ -35,8 +35,3 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: jblik/laundry-notifier:latest
-  deploy:
-    runs-on: host
-    needs: docker
-    steps:
-      - run: ssh -i ${{ secrets.DEPLOY_SERVER_SSH_KEY_FILE }} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 root@${{ secrets.DEPLOY_SERVER_IP }} "docker pull jblik/laundry-notifier:latest && docker stop laundry-notifier && docker rm laundry-notifier && ${{ secrets.DOCKER_RUN_COMMAND }}"

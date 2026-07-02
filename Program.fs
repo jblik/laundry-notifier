@@ -65,12 +65,10 @@ let monitor (config: Config) (name: string) (uri: string) =
         while true do
             try
                 let! status = getStatus uri
-                do! sendDiscord config.DiscordWebhookUrl $"{name} {status.Program} has ended: {status}"
 
                 if status.Inactive = "true" then
                     do! Task.Delay(TimeSpan.FromMinutes 15.0)
                 else
-                    // a wash has started: wait until the scheduled completion time
                     printfn $"{name}: '{status.Program}' running, ends in {status.ProgramEnd.End}"
                     do! Task.Delay(parseRemaining status.ProgramEnd.End)
 
@@ -83,27 +81,25 @@ let monitor (config: Config) (name: string) (uri: string) =
 
                             if s.ProgramEnd.End = "" then
                                 ended <- true
-                                do! sendDiscord config.DiscordWebhookUrl $"{name} {program} has ended: {s.Status}"
+                                do! sendDiscord config.DiscordWebhookUrl $"{name} {program} has ended\n {s.Status}"
                             else
                                 if s.Program <> "" then program <- s.Program
                                 do! Task.Delay(TimeSpan.FromMinutes 1.0)
                         with ex ->
-                            // device can answer 503 while busy; keep polling
                             eprintfn $"{name}: {ex.Message}"
-                            do! Task.Delay(TimeSpan.FromMinutes 1.0)
+                            do! Task.Delay(TimeSpan.FromSeconds 5.0)
             with ex ->
                 eprintfn $"{name}: {ex.Message}"
-                do! Task.Delay(TimeSpan.FromMinutes 15.0)
+                do! Task.Delay(TimeSpan.FromSeconds 5.0)
     }
 
 [<EntryPoint>]
 let main _ =
     let config = loadConfig ()
-    printf "%A" config.DiscordWebhookUrl
 
     [| monitor config "Washer" config.WasherUri
        monitor config "Dryer" config.DryerUri |]
     |> Task.WhenAll
-    |> fun t -> t.Wait()
+    |> _.Wait()
 
     0

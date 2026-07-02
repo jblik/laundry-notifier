@@ -41,9 +41,7 @@ let http = new HttpClient(Timeout = TimeSpan.FromSeconds 30.0)
 let getStatus (baseUri: string) =
     task {
         let! json = http.GetStringAsync($"{baseUri}/ai?command=getDeviceStatus")
-        let status = JsonSerializer.Deserialize<DeviceStatus>(json)
-        printf $"{status}"
-        return status
+        return JsonSerializer.Deserialize<DeviceStatus>(json)
     }
 
 let sendDiscord (webhookUrl: string) (name: string) (program: string) (status: string) =

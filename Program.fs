@@ -7,24 +7,20 @@ open System.Text.Json
 open System.Threading.Tasks
 open Microsoft.Extensions.Configuration
 
-[<CLIMutable>]
 type Config =
     { DiscordWebhookUrl: string
       WasherUri: string
       DryerUri: string }
 
-[<CLIMutable>]
-type ProgramEnd = { End: string; EndType: string }
+type ProgramEnd = { End: string }
 
-[<CLIMutable>]
 type DeviceStatus =
     { DeviceName: string
       Serial: string
       Inactive: string
       Program: string
       Status: string
-      ProgramEnd: ProgramEnd
-      deviceUuid: string }
+      ProgramEnd: ProgramEnd }
 
 let loadConfig () =
     ConfigurationBuilder()
@@ -66,15 +62,18 @@ let monitor (config: Config) (name: string) (uri: string) =
     task {
         while true do
             try
-                let! status = getStatus uri
+                let! deviceStatus = getStatus uri
 
-                if status.Inactive = "true" then
-                    do! Task.Delay(TimeSpan.FromMinutes 15.0)
+                let isInactiveOrWithoutEndTime =
+                    deviceStatus.Inactive = "true" || deviceStatus.Status = "Determining load\n"
+
+                if isInactiveOrWithoutEndTime then
+                    do! Task.Delay(TimeSpan.FromMinutes 10.0)
                 else
-                    printfn $"{name}: '{status.Program}' running, ends in {status.ProgramEnd.End}"
-                    do! Task.Delay(parseRemaining status.ProgramEnd.End)
+                    printfn $"{name}: '{deviceStatus.Program}' running, ends in {deviceStatus.ProgramEnd.End}"
+                    do! Task.Delay(parseRemaining deviceStatus.ProgramEnd.End)
 
-                    let program = status.Program
+                    let program = deviceStatus.Program
                     let mutable ended = false
 
                     while not ended do

@@ -7,11 +7,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Program.fs" />
+        <Content Include=".forgejo\workflows\docker-publish.yml" />
+        <Content Include="README.md" />
         <Content Include="appsettings.json">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
-        <Content Include=".forgejo\workflows\docker-publish.yml" />
+        <Compile Include="Program.fs" />
     </ItemGroup>
 
     <ItemGroup>

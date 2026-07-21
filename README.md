@@ -1,0 +1,1 @@
+Simple program to fetch the status of V-ZUG washer and dryer, then send a completion notice to Discord.

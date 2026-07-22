@@ -6,6 +6,10 @@ open System.Text
 open System.Text.Json
 open System.Threading.Tasks
 open Microsoft.Extensions.Configuration
+type ApplicationError =
+    | ConfigurationException of ex: exn * message: string
+    | DeserializationError of message: string
+    | UnhandledException of ex: exn
 
 type Config =
     { DiscordWebhookUrl: string
@@ -23,12 +27,16 @@ type DeviceStatus =
       ProgramEnd: ProgramEnd }
 
 let loadConfig () =
-    ConfigurationBuilder()
-        .SetBasePath(AppContext.BaseDirectory)
-        .AddJsonFile("appsettings.json")
-        .AddEnvironmentVariables()
-        .Build()
-        .Get<Config>()
+    try
+        ConfigurationBuilder()
+            .SetBasePath(AppContext.BaseDirectory)
+            .AddJsonFile("appsettings.json")
+            .AddEnvironmentVariables()
+            .Build()
+            .Get<Config>()
+        |> Ok
+    with exn ->
+        ConfigurationException(exn, "failed to get config from appsettings") |> Error
 
 let http = new HttpClient(Timeout = TimeSpan.FromSeconds 30.0)
 
@@ -97,9 +105,14 @@ let monitor (config: Config) (name: string) (uri: string) =
 let main _ =
     let config = loadConfig ()
 
-    [| monitor config "Washer" config.WasherUri
-       monitor config "Dryer" config.DryerUri |]
-    |> Task.WhenAll
-    |> _.Wait()
+    match config with
+    | Ok config ->
+        [| monitor config "Washer" config.WasherUri
+           monitor config "Dryer" config.DryerUri |]
+        |> Task.WhenAll
+        |> _.Wait()
 
-    0
+        0
+    | Error error ->
+        eprintfn $"%A{error}"
+        1
